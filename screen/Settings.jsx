@@ -8,6 +8,9 @@ import TrackPlayer from "react-native-track-player";
 import { storage } from "../components/Data/LocalStorage";
 import { StatusBar } from "expo-status-bar";
 
+// app version
+import { version } from "../package.json";
+
 export default function Settings() {
   // toat message
   const toast = useToast();
@@ -90,7 +93,7 @@ export default function Settings() {
         }}
       >
         <Text className="text-xs font-[Raleway-Regular] text-white ">
-          Develop by Swagger v0.1
+          Develop by Swagger v{version}
         </Text>
       </View>
     </View>

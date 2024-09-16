@@ -6,6 +6,7 @@ import {
   Image,
   TextInput,
   FlatList,
+  StatusBar,
 } from "react-native";
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigation } from "@react-navigation/native";
@@ -20,7 +21,6 @@ import TrackPlayer, {
   Event,
   useTrackPlayerEvents,
 } from "react-native-track-player";
-import { StatusBar } from "expo-status-bar";
 
 export default function GroupListnerChats({ route }) {
   const [backgroundImage, setBackgroundImage] = useState("");
@@ -169,6 +169,7 @@ export default function GroupListnerChats({ route }) {
 
     return (
       <View className="flex-col mx-1 mb-[2px] mt-[2px]" key={index}>
+        <StatusBar translucent style="light" />
         <View className="flex-col">
           {item.senderId == userId ? (
             <View className="flex-col max-w-[250px] self-end bg-gray-700 p-2 rounded-l-[15px]">

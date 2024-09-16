@@ -7,11 +7,11 @@ const userId = storage.getString("userId");
 //streaming url
 const streamingUrl = storage.getString("url");
 
-export default async function CreateStreamingInUsers(item) {
+export default async function CreateStreamingInUsers(item, roomId) {
   // firebase databse
   const firebaseDatabase = getDatabase(App);
 
-  const getAllUserIdRef = ref(firebaseDatabase, "Streaming/" + userId);
+  const getAllUserIdRef = ref(firebaseDatabase, "Streaming/" + roomId);
   onValue(getAllUserIdRef, (snapshort) => {
     snapshort.forEach((data) => {
       const AllUserIds = data.key;
@@ -23,26 +23,21 @@ export default async function CreateStreamingInUsers(item) {
 
   //create stream child in all users
   function updateStreamChildInUsers(AllUserIds) {
-    const title = item.title;
-    const artwork = item.artwork;
-    const artist = item.artist;
-    const url = `${streamingUrl}/stream?id=${item.videoId}`;
-    const videoId = item.videoId;
-    const duration = item.duration;
+    if (userId === AllUserIds) return;
 
-    if (userId != AllUserIds) {
-      const updateStreamChildRef = ref(
-        firebaseDatabase,
-        "users/" + AllUserIds + "/" + "Streaming"
-      );
-      update(updateStreamChildRef, {
-        title: title,
-        artwork: artwork,
-        artist: artist,
-        url: url,
-        videoId: videoId,
-        duration: duration,
-      });
-    }
+    const updateStreamChildRef = ref(
+      firebaseDatabase,
+      `users/${AllUserIds}/Streaming`
+    );
+    const data = {
+      title: item.title,
+      artwork: item.artwork,
+      artist: item.artist,
+      url: `${streamingUrl}/stream?id=${item.videoId}`,
+      videoId: item.videoId,
+      duration: item.duration,
+    };
+
+    update(updateStreamChildRef, data);
   }
 }

@@ -100,18 +100,20 @@ export default function SearchAllSongs({ navigation, route }) {
   // show play list bottom sheet
   function showPlayListBottomSheet() {
     loadUserPlayList();
-    showPlayListBottomSheetRef.current.open();
-    bottomSheetRef.current.close();
   }
 
   // load current user play list
   async function loadUserPlayList() {
     const playListData = await UserPlayListData(userId);
     playListData.map((data) => {
+      setPlayListData;
       if (data.playListImage == null) {
         setPlayListData((pre) => [...pre, data]);
       }
     });
+
+    showPlayListBottomSheetRef.current.open();
+    bottomSheetRef.current.close();
   }
 
   // adding song to playlist
@@ -275,6 +277,9 @@ export default function SearchAllSongs({ navigation, route }) {
             // set video id for quick picks to future play related
             storage.set("quick-videoId", item.videoId);
             SongsPlayAndRedirectToMusicPlayer(item, userId);
+
+            // check if user streaming or not or either connected to room
+            storage.set("checkUserConnectedToStreamEitherUserStreaming", true);
           }
         }}
       >

@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   Image,
   TouchableNativeFeedback,
+  Modal,
 } from "react-native";
 import React, { useRef, useState } from "react";
 import { useEffect } from "react";
@@ -33,7 +34,11 @@ import { UserPlayListData } from "../components/Data/LoadAllSongDataForSeacrh";
 import { useToast } from "react-native-toast-notifications";
 import RBSheet from "react-native-raw-bottom-sheet";
 import { StatusBar } from "expo-status-bar";
-import { useMMKVBoolean, useMMKVString } from "react-native-mmkv";
+import {
+  useMMKVBoolean,
+  useMMKVObject,
+  useMMKVString,
+} from "react-native-mmkv";
 import LottieView from "lottie-react-native";
 import { storage } from "../components/Data/LocalStorage";
 import RemoveAllStreamRelatedThings from "../functions/RemoveAllStreamRelatedThings";
@@ -62,6 +67,17 @@ export default function MusicHome({ navigation }) {
   const [userFirstName] = useMMKVString("userfirstname");
   const [userLastName] = useMMKVString("userlastname");
 
+  // get song queue
+  const [streamQueue] = useMMKVObject("streamQueue");
+
+  // check if user alery readed about the app
+  const [checkIfUserAleryReaded] = useMMKVBoolean("checkIfUserAleryReaded");
+
+  // check if user connected to stream either user streaming that could not be dublicated stream
+  const [checkUserConnectedToStreamEitherUserStreaming] = useMMKVBoolean(
+    "checkUserConnectedToStreamEitherUserStreaming"
+  );
+
   // navigate use to player screen first time play
   const [
     navigateToPlayerScreenFirstTimePlay,
@@ -70,6 +86,7 @@ export default function MusicHome({ navigation }) {
 
   // stream
   const [isStreaming] = useMMKVBoolean("isStreaming");
+  const [RoomConnectedTo] = useMMKVString("RoomConnectedTo");
   const [url] = useMMKVString("url");
   // track details
   const [SongDataForBottomSheet, setSongDataForBottomSheet] = useState({});
@@ -127,14 +144,13 @@ export default function MusicHome({ navigation }) {
 
   // user info
   function gettingUserInfo() {
-    const userDetailsRef = ref(firebaseDatabase, "users/" + userId);
+    const userDetailsRef = ref(firebaseDatabase, `users/${userId}/Streaming`);
     onValue(userDetailsRef, (snapshort) => {
-      const checkStream = snapshort.child("Streaming").exists();
-
-      if (checkStream) {
-        const checkStreamData = snapshort.child("Streaming").val();
-        if (checkStreamData != null) {
-          getStreamDataAndAddToTrackPlayer(checkStreamData);
+      if (snapshort.exists()) {
+        try {
+          getStreamDataAndAddToTrackPlayer(snapshort.val());
+        } catch (error) {
+          console.error("Error in gettingUserInfo in Home screen:", error);
         }
       }
     });
@@ -142,17 +158,27 @@ export default function MusicHome({ navigation }) {
 
   // get streaming songs
   async function getStreamDataAndAddToTrackPlayer(songsData) {
-    try {
-      if (songsData != null) {
-        await TrackPlayer.reset().then(async () => {
-          await TrackPlayer.add(songsData).then(async () => {
-            storage.set("streamQueue", JSON.stringify(songsData));
-            await TrackPlayer.play();
-          });
-        });
-      }
-    } catch (error) {
-      await TrackPlayer.setupPlayer({});
+    if (songsData == null) return;
+
+    const currentSongIndex = await TrackPlayer.getActiveTrackIndex();
+    if (currentSongIndex == null) {
+      // check if user already streaming or not either user streaming that could not be dublicated stream
+      storage.set("checkUserConnectedToStreamEitherUserStreaming", true);
+      await TrackPlayer.add(songsData);
+      await TrackPlayer.play();
+      // set stream queue
+      storage?.set("streamQueue", JSON.stringify(songsData));
+    } else {
+      // check if user already streaming or not either user streaming that could not be dublicated stream
+      storage.set("checkUserConnectedToStreamEitherUserStreaming", true);
+      // get cuurent song index
+
+      await TrackPlayer.add(songsData, 1 + currentSongIndex);
+      await TrackPlayer.skip(1 + currentSongIndex);
+      await TrackPlayer.play();
+
+      // set stream queue
+      storage?.set("streamQueue", JSON.stringify(songsData));
     }
   }
 
@@ -192,9 +218,13 @@ export default function MusicHome({ navigation }) {
       // check if queue has been ended
       await checkIfQueueHasBeenEnded(event.index, videoId);
     }
-    // change track for stream
-    if (isStreaming && event.track) {
-      CreateStreamingInUsers(event.track);
+
+    if (checkUserConnectedToStreamEitherUserStreaming == false) {
+      if (isStreaming) {
+        CreateStreamingInUsers(event.track, userId);
+      } else {
+        CreateStreamingInUsers(event.track, RoomConnectedTo);
+      }
     }
   });
 
@@ -226,8 +256,10 @@ export default function MusicHome({ navigation }) {
       videoId: track.videoId,
     }));
 
-    await TrackPlayer.add(addingDataToQueue).then(async () =>
-      TrackPlayer.play()
+    // get active track index from track player
+    const currentSongIndex = await TrackPlayer.getActiveTrackIndex();
+    await TrackPlayer.add(addingDataToQueue, 3 + currentSongIndex).then(
+      async () => TrackPlayer.play()
     );
     // add more queue data to flashlist to view all new data added
     storage.set("adddataonflatlist", JSON.stringify(addingDataToQueue));
@@ -329,6 +361,11 @@ export default function MusicHome({ navigation }) {
       });
       bottomSheet.current.close();
     });
+  }
+
+  // user readed about app
+  async function userReadedAboutApp() {
+    storage?.set("checkIfUserAleryReaded", false);
   }
 
   return (
@@ -469,6 +506,54 @@ export default function MusicHome({ navigation }) {
             </View>
           </ScrollView>
         </View>
+
+        {/* model for user to read about app */}
+        <Modal
+          visible={checkIfUserAleryReaded}
+          style={{ alignSelf: "center" }}
+          animationType={"fade"}
+          aria-disabled={true}
+          transparent={true}
+        >
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(52, 52, 52, 0.8)",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <View className="flex-col border-[0.7px] rounded-lg border-[#D90026] p-3 m-2 bg-black">
+              <Text className="text-white text-sm font-[Raleway-SemiBold]">
+                Feelplay application provides audio playing directly without
+                utilizing your phone's storage, in contrast to other music
+                services like spotify that typically save audio files,
+                potentially increasing storage consumption. although Feelplay
+                may encounter a minor delay of one to two seconds during audio
+                playback, it guarantees that the app's size is not impacted by
+                extra storage demands.
+              </Text>
+
+              <Text className="text-white text-md font-[Raleway-Bold] mt-5">
+                thank you team FeelPlay.{" "}
+              </Text>
+
+              <TouchableOpacity
+                style={{
+                  backgroundColor: "#D90026",
+                  padding: 7,
+                  borderRadius: 5,
+                  alignSelf: "flex-end",
+                }}
+                onPress={() => userReadedAboutApp()}
+              >
+                <Text className="text-white font-[Raleway-SemiBold] text-xs">
+                  I understand
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </View>
 
       {/* bottom sheet */}

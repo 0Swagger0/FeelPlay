@@ -1,9 +1,9 @@
 import { View, Text } from "react-native";
-import React from "react";
+import React, { memo } from "react";
 import TrackPlayer, { useProgress } from "react-native-track-player";
 import Slider from "@react-native-community/slider";
 
-export default function ProgressAndDuration() {
+function ProgressAndDuration() {
   const { position, duration } = useProgress();
 
   // duration in second
@@ -37,3 +37,5 @@ export default function ProgressAndDuration() {
     </View>
   );
 }
+
+export default memo(ProgressAndDuration);

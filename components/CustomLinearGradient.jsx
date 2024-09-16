@@ -6,7 +6,7 @@ import {
   Alert,
   Share,
 } from "react-native";
-import React, { useEffect, useState } from "react";
+import React, { memo, useEffect, useState } from "react";
 import { LinearGradient } from "expo-linear-gradient";
 import { ArtistTicker, TitleTicker } from "./TickerText";
 import LikeSongsExists from "./LikeSongsExists";
@@ -21,7 +21,7 @@ import { storage } from "./Data/LocalStorage";
 import { useMMKVBoolean, useMMKVString } from "react-native-mmkv";
 import { getColors } from "react-native-image-colors";
 
-export default function CustomLinearGradient({ item, setvisibleModel }) {
+function CustomLinearGradient({ item, setvisibleModel }) {
   const toast = useToast();
   // image color
   const [ImageColor, setImageColor] = useState("");
@@ -325,3 +325,5 @@ export default function CustomLinearGradient({ item, setvisibleModel }) {
     </View>
   );
 }
+
+export default memo(CustomLinearGradient);

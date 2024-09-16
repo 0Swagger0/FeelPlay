@@ -7,6 +7,7 @@ import { Alert } from "react-native";
 export default async function SongsPlayAndRedirectToMusicPlayer(item, userId) {
   // check if user streming or not
   const isStreaming = storage.getBoolean("isStreaming");
+  const RoomConnectedTo = storage.getString("RoomConnectedTo");
   const url = storage.getString("url");
 
   //https://transcoder-9w41.onrender.com/
@@ -19,7 +20,12 @@ export default async function SongsPlayAndRedirectToMusicPlayer(item, userId) {
 
   // check if user streaming
   if (isStreaming) {
-    CreateStreamingInUsers(item);
+    CreateStreamingInUsers(item, userId);
+  }
+
+  // check if is connected to stream
+  if (RoomConnectedTo) {
+    CreateStreamingInUsers(item, RoomConnectedTo);
   }
 
   // getting url from ytcore server
@@ -49,8 +55,8 @@ export default async function SongsPlayAndRedirectToMusicPlayer(item, userId) {
 
     const currentTrackIndex = await TrackPlayer.getActiveTrackIndex();
     if (currentTrackIndex >= 0) {
-      await TrackPlayer.add(tracks, currentTrackIndex);
-      await TrackPlayer.skip(currentTrackIndex).then(
+      await TrackPlayer.add(tracks, 1 + currentTrackIndex);
+      await TrackPlayer.skip(1 + currentTrackIndex).then(
         async () => await TrackPlayer.play()
       );
     } else {

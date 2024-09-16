@@ -87,81 +87,91 @@ function MusicPlayer({ navigation, route }) {
 
   useEffect(() => {
     getQueue();
-    getStreamingDetails();
+
     getCurrentUserPlayList();
+
+    return () => {
+      OnTouchMovement.current = false;
+    };
   }, [route]);
+
+  // get stream data
+  useEffect(() => {
+    getStreamingDetails();
+  }, []);
 
   // change stream data
   useEffect(() => {
-    getStreamQueue();
+    if (streamQueueData !== null && streamQueueData !== undefined) {
+      getStreamQueue();
+      setQueueData([]);
+    }
   }, [streamQueueData]);
 
   // add more data to flatlist
   useEffect(() => {
-    async function addMoreDataToQueue() {
-      if (adddataonflatlist != null) {
+    if (adddataonflatlist !== null && adddataonflatlist !== undefined) {
+      async function addMoreDataToQueue() {
         const addingmoresongsinqueue = adddataonflatlist.map((data) => data);
 
         setQueueData((pre) => [...pre, ...addingmoresongsinqueue]);
       }
+      addMoreDataToQueue();
     }
-    addMoreDataToQueue();
   }, [adddataonflatlist]);
 
   // event listener
   useEffect(() => {
-    TrackPlayer.addEventListener(Event.RemoteNext, () => {
+    const subscription = TrackPlayer.addEventListener(Event.RemoteNext, () => {
       OnTouchMovement.current = false;
+      storage.set("checkUserConnectedToStreamEitherUserStreaming", false);
     });
-    TrackPlayer.addEventListener(Event.RemotePrevious, () => {
-      OnTouchMovement.current = false;
-    });
+    const subscription2 = TrackPlayer.addEventListener(
+      Event.RemotePrevious,
+      () => {
+        OnTouchMovement.current = false;
+        storage.set("checkUserConnectedToStreamEitherUserStreaming", false);
+      }
+    );
+
+    return () => {
+      subscription.remove();
+      subscription2.remove();
+    };
   }, []);
 
   // get queue data
   async function getQueue() {
     const queue = await TrackPlayer.getQueue();
-    if (queue.length == 0) {
-      setQueueData(userQueue);
-      // play song from user queue
-      playsongfromuserqueue();
-    } else {
-      setQueueData(queue);
+    if (queue !== null && queue !== undefined) {
+      setQueueData(queue.length ? queue : userQueue);
       const currentsongindex = await TrackPlayer.getActiveTrackIndex();
-      setTimeout(async () => {
-        // getting song index and track title
-        if (FlashListRef.current) {
-          FlashListRef.current.scrollToIndex({
-            animated: true,
-            index: currentsongindex,
-          });
-        }
-      }, 1000);
-    }
-
-    const currentsongindex = await TrackPlayer.getActiveTrackIndex();
-    setTimeout(async () => {
-      // getting song index and track title
-      if (FlashListRef.current) {
-        FlashListRef.current.scrollToIndex({
-          animated: true,
-          index: currentsongindex,
-        });
+      if (currentsongindex >= 0) {
+        setTimeout(
+          () =>
+            FlashListRef.current?.scrollToIndex({
+              animated: true,
+              index: currentsongindex,
+            }),
+          100
+        );
+      } else {
+        playsongfromuserqueue();
       }
-    }, 1000);
+    }
   }
 
   // play song from user queue
   async function playsongfromuserqueue() {
-    await TrackPlayer.add(userQueue).then(async () => {
+    if (userQueue !== null && userQueue !== undefined) {
+      await TrackPlayer.add(userQueue);
       await TrackPlayer.skip(songIndex);
       await TrackPlayer.play();
-    });
+    }
   }
   // get stream queue
   function getStreamQueue() {
-    setQueueData([]);
-    if (connectedToStream == true) {
+    if (connectedToStream == true || isStreaming == true) {
       setQueueData((pre) => [...pre, streamQueueData]);
     }
   }
@@ -171,7 +181,7 @@ function MusicPlayer({ navigation, route }) {
       event.type == Event.PlaybackActiveTrackChanged &&
       event.track !== null
     ) {
-      if (connectedToStream == true) {
+      if (connectedToStream == true || isStreaming == true) {
         getQueue();
       }
 
@@ -182,21 +192,30 @@ function MusicPlayer({ navigation, route }) {
 
   // change position to index
   function changeScrollPositionToIndex(index) {
-    FlashListRef.current.scrollToIndex({ animated: true, index: index });
+    if (FlashListRef.current !== null && FlashListRef.current !== undefined)
+      FlashListRef.current.scrollToIndex({ animated: true, index: index });
   }
 
   // streaming details
   function getStreamingDetails() {
     const getStreamRef = ref(fireDatabase, "Streaming/" + userId);
-    onValue(getStreamRef, (snapshort) => {
-      const data = snapshort.size;
-      if (data >= 2) {
-        setvisibleModel(false);
-        storage.set("isStreaming", true);
-        // show toast message and show which user was join
-        showToastMessageWithUserName();
+    onValue(
+      getStreamRef,
+      (snapshort) => {
+        if (snapshort && snapshort.exists()) {
+          const data = snapshort.size;
+          if (data >= 2) {
+            setvisibleModel(false);
+            storage.set("isStreaming", true);
+            // show toast message and show which user was join
+            showToastMessageWithUserName();
+          }
+        }
+      },
+      (error) => {
+        console.error("Error in getStreamingDetails:", error);
       }
-    });
+    );
   }
 
   // show tost message and user name
@@ -205,14 +224,26 @@ function MusicPlayer({ navigation, route }) {
       ref(fireDatabase, "Streaming/" + userId),
       limitToFirst(1)
     );
-    onValue(getLastUserNameRef, (snapshort) => {
-      snapshort.forEach((data) => {
-        const name = data.child("userName").val();
-        if (name) {
-          setConnectedUserName(name);
+    onValue(
+      getLastUserNameRef,
+      (snapshort) => {
+        if (!snapshort) {
+          console.error(
+            "Error in showToastMessageWithUserName: snapshort is null"
+          );
+          return;
         }
-      });
-    });
+        snapshort.forEach((data) => {
+          const name = data?.child("userName")?.val();
+          if (name) {
+            setConnectedUserName(name);
+          }
+        });
+      },
+      (error) => {
+        console.error("Error in showToastMessageWithUserName:", error);
+      }
+    );
   }
 
   // show message
@@ -270,11 +301,13 @@ function MusicPlayer({ navigation, route }) {
   async function getCurrentUserPlayList() {
     const userplaylistdata = await UserPlayListData(userId);
     setPlayListData([]);
-    userplaylistdata.map((data) => {
-      if (data.playListImage == null) {
-        setPlayListData((pre) => [...pre, data]);
-      }
-    });
+    if (userplaylistdata !== null && userplaylistdata !== undefined) {
+      userplaylistdata.map((data) => {
+        if (data.playListImage === null) {
+          setPlayListData((pre) => [...pre, data]);
+        }
+      });
+    }
   }
 
   // adding song to playlist
@@ -314,7 +347,7 @@ function MusicPlayer({ navigation, route }) {
   }
 
   const viewabilityConfig = useRef({
-    itemVisiblePercentThreshold: 50, // Set to 90% for triggering at 90% scroll
+    itemVisiblePercentThreshold: 50, // Set to 90% for triggering at 50% scroll
     waitForInteraction: true,
     minimumViewTime: 5,
   }).current;
@@ -322,6 +355,8 @@ function MusicPlayer({ navigation, route }) {
   const onViewableItemsChanged = useCallback(
     async ({ viewableItems, changed }) => {
       if (changed && changed.length > 0) {
+        // check User Connected To Stream Either User Streaming
+        storage.set("checkUserConnectedToStreamEitherUserStreaming", false);
         const index = changed[0].index;
 
         if (OnTouchMovement.current === true) {
@@ -336,7 +371,6 @@ function MusicPlayer({ navigation, route }) {
     },
     []
   );
-
   // render queue song list
   function renderQueueData({ item, index }) {
     return (
@@ -369,7 +403,12 @@ function MusicPlayer({ navigation, route }) {
           {/*  */}
           {/* FlatList */}
 
-          <View style={{ flexDirection: "row", height: height }}>
+          <View
+            style={{
+              flexDirection: "row",
+              height: height,
+            }}
+          >
             <FlashList
               contentInsetAdjustmentBehavior="automatic"
               estimatedItemSize={200}
@@ -381,7 +420,7 @@ function MusicPlayer({ navigation, route }) {
               renderItem={renderQueueData}
               onViewableItemsChanged={onViewableItemsChanged}
               viewabilityConfig={viewabilityConfig}
-              onTouchMove={() => (OnTouchMovement.current = true)}
+              onScrollBeginDrag={() => (OnTouchMovement.current = true)}
               scrollEventThrottle={15}
             />
           </View>

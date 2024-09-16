@@ -1,12 +1,12 @@
 import { View, TouchableOpacity } from "react-native";
-import React, { useEffect, useState } from "react";
+import React, { memo, useEffect, useState } from "react";
 import { AntDesign } from "@expo/vector-icons";
 import { getDatabase, onValue, ref, remove, update } from "firebase/database";
 import { App } from "../FirebaseConfig";
 import { useToast } from "react-native-toast-notifications";
 import { useMMKV, useMMKVObject, useMMKVString } from "react-native-mmkv";
 
-export default function LikeSongsExists() {
+function LikeSongsExists() {
   // locall storage
   const [currentSongDetails] = useMMKVObject("currentSongDetails");
   const [userId] = useMMKVString("userId");
@@ -31,7 +31,7 @@ export default function LikeSongsExists() {
         setHeratIconShow(false);
       }
     });
-  }, [currentSongDetails.videoId, userId]);
+  }, [, userId]);
 
   // adding to like musicgetCurrentSongDetails
   async function AddToLikeMusic() {
@@ -103,3 +103,5 @@ export default function LikeSongsExists() {
     </View>
   );
 }
+
+export default memo(LikeSongsExists);
