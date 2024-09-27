@@ -46,6 +46,7 @@ import CreateStreamingInUsers from "../functions/CreateStreamingInUsers";
 import GamingMix from "../components/MusicHomeComponents/GamingMix";
 import Testing from "./Testing";
 import axios from "axios";
+import getLyricsData from "../functions/getLyricsData";
 
 export default function MusicHome({ navigation }) {
   // databse
@@ -198,7 +199,7 @@ export default function MusicHome({ navigation }) {
       event.track !== null
     ) {
       // clear local current song data
-      const { artwork, videoId } = event.track;
+      const { artwork, videoId, title, artist } = event.track;
       if (videoId && artwork) {
         setcurrentvideoId(videoId);
         // set title in local storage
@@ -210,6 +211,9 @@ export default function MusicHome({ navigation }) {
         storage.set("currentSongDetails", JSON.stringify(event.track));
         storage.set("artwork", artwork);
       }
+
+      // get lyrics data
+      await getLyricsData(title, artist);
 
       // navigate user to music player first time play
       if (navigateToPlayerScreenFirstTimePlay) {
@@ -258,7 +262,7 @@ export default function MusicHome({ navigation }) {
 
     // get active track index from track player
     const currentSongIndex = await TrackPlayer.getActiveTrackIndex();
-    await TrackPlayer.add(addingDataToQueue, 3 + currentSongIndex).then(
+    await TrackPlayer.add(addingDataToQueue, 4 + currentSongIndex).then(
       async () => TrackPlayer.play()
     );
     // add more queue data to flashlist to view all new data added

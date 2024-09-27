@@ -20,6 +20,7 @@ import { App } from "../FirebaseConfig";
 import { storage } from "./Data/LocalStorage";
 import { useMMKVBoolean, useMMKVString } from "react-native-mmkv";
 import { getColors } from "react-native-image-colors";
+import Lyrics from "./Lyrics";
 
 function CustomLinearGradient({ item, setvisibleModel }) {
   const toast = useToast();
@@ -204,6 +205,10 @@ function CustomLinearGradient({ item, setvisibleModel }) {
           position: "absolute",
         }}
       >
+        {/* lyrics */}
+        <View className="flex">
+          <Lyrics LinearGradientColor={ImageColor.darkVibrant} />
+        </View>
         <View className="flex-1 justify-end mb-14">
           <View
             style={{

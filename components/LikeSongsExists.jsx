@@ -31,7 +31,7 @@ function LikeSongsExists() {
         setHeratIconShow(false);
       }
     });
-  }, [, userId]);
+  }, [currentSongDetails, userId]);
 
   // adding to like musicgetCurrentSongDetails
   async function AddToLikeMusic() {
